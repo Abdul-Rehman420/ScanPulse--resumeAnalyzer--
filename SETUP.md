@@ -7,15 +7,11 @@
 ```bash
 node --version  # >= 20
 npm --version   # >= 9
-psql --version  # PostgreSQL client
 ```
 
 ### 2. Database Setup
 
-```bash
-# Create PostgreSQL database
-psql -U postgres -c "CREATE DATABASE resume_analyzer;"
-```
+Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas), then get your connection string.
 
 ### 3. Server Setup
 
@@ -23,7 +19,7 @@ psql -U postgres -c "CREATE DATABASE resume_analyzer;"
 cd server
 npm install
 npx prisma generate
-npx prisma migrate dev --name init
+npx prisma db push
 npx prisma db seed
 ```
 
@@ -40,11 +36,11 @@ npm install
 ```env
 NODE_ENV=development
 PORT=5000
-DATABASE_URL="postgresql://postgres:password@localhost:5432/resume_analyzer"
+DATABASE_URL="mongodb+srv://user:password@cluster.mongodb.net/resume_analyzer?retryWrites=true&w=majority"
 JWT_SECRET="your-secret-key-change-this"
 JWT_EXPIRES_IN="7d"
-GEMINI_API_KEY="your-gemini-api-key"
-GEMINI_MODEL="gemini-2.0-flash"
+GROQ_API_KEY="your-groq-api-key"
+GROQ_MODEL="llama-3.3-70b-versatile"
 CLIENT_URL="http://localhost:3000"
 UPLOAD_DIR="./uploads"
 MAX_FILE_SIZE=5242880
@@ -57,11 +53,12 @@ NEXT_PUBLIC_APP_NAME="AI Resume Analyzer"
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 6. Gemini API Key
+### 6. Groq API Key
 
-1. Go to https://aistudio.google.com/apikey
-2. Click "Create API Key"
-3. Copy the key to `server/.env` as `GEMINI_API_KEY`
+1. Go to https://console.groq.com/keys
+2. Sign in with Google/GitHub
+3. Click "Create API Key"
+4. Copy the key to `server/.env` as `GROQ_API_KEY`
 
 ### 7. Run
 
@@ -82,10 +79,10 @@ cd client && npm run dev
 | `npm run dev` | Start dev server with hot reload |
 | `npm run build` | TypeScript compilation |
 | `npm start` | Start production server |
-| `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:push` | Push schema (dev only) |
+| `npm run db:push` | Push schema to MongoDB |
 | `npm run db:seed` | Seed database |
 | `npm run db:studio` | Open Prisma Studio |
+| `npm run db:generate` | Regenerate Prisma client |
 
 ### Client
 
@@ -104,12 +101,8 @@ cd server
 npx prisma generate
 ```
 
-### Migration issues
-```bash
-cd server
-npx prisma migrate reset  # Resets database
-npx prisma db seed        # Re-seed
-```
+### MongoDB connection issues
+Ensure your IP is whitelisted in MongoDB Atlas Network Access.
 
 ### CORS errors
 Ensure `CLIENT_URL` in `server/.env` matches your frontend URL exactly.
@@ -120,5 +113,5 @@ Check `uploads/` directory exists and is writable:
 mkdir -p server/uploads
 ```
 
-### Gemini API errors
-Verify your API key is valid and has quota available at https://aistudio.google.com/apikey
+### AI API errors
+Verify your Groq API key is valid at https://console.groq.com/keys

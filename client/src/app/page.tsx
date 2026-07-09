@@ -519,7 +519,7 @@ export default function LandingPage() {
             <span className="font-bold">AI Resume Analyzer</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Built with Next.js, Express, Prisma, and Google Gemini AI.
+            Built with Next.js, Express, Prisma, and Groq AI.
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             &copy; {new Date().getFullYear()} AI Resume Analyzer. All rights reserved.

@@ -24,16 +24,18 @@
 4. Add environment variables (all from `server/.env.example`)
 5. Deploy
 
-## Database (Neon)
+## Database (MongoDB Atlas)
 
 ### Steps
-1. Go to [neon.tech](https://neon.tech) and create a free account
-2. Create a new project (PostgreSQL)
-3. Copy the connection string
-4. Add it as `DATABASE_URL` in your Render environment variables
-5. After first deploy, run migrations via Render Shell:
+1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) and create a free account
+2. Create a new cluster (free M0 tier)
+3. Under **Network Access**, whitelist your deployment IP (or 0.0.0.0/0 for open access)
+4. Under **Database Access**, create a database user
+5. Click **Connect** → **Drivers** → copy the connection string
+6. Add it as `DATABASE_URL` in your Render environment variables
+7. After first deploy, push schema via Render Shell:
    ```bash
-   npx prisma migrate dev --name init
+   npx prisma db push
    npx prisma db seed
    ```
 
@@ -42,7 +44,6 @@
 - [ ] Set strong `JWT_SECRET` (use `openssl rand -hex 64`)
 - [ ] Set `NODE_ENV=production`
 - [ ] Configure Cloudinary or AWS S3 for file storage
-- [ ] Enable PostgreSQL SSL
 - [ ] Set up custom domain (optional)
 - [ ] Add monitoring (optional)
 
