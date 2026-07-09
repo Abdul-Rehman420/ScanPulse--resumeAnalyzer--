@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resumes  Resume[]
+  analyses Analysis[]
+}
+
+model Resume {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  fileName      String
+  originalName  String
+  fileSize      Int
+  mimeType      String
+  extractedText String?
+  parsedData    String?
+  uploadedAt    DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  analysis Analysis?
+
+  @@index([userId])
+}
+
+model Analysis {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  resumeId          String   @unique @db.ObjectId
+  userId            String   @db.ObjectId
+  atsScore          Int
+  grammarScore      Int
+  keywordScore      Int
+  overallRating     String
+  summary           String
+  strengths         String
+  weaknesses        String
+  missingKeywords   String
+  grammarSuggestions String
+  recommendations   String
+  atsTips           String
+  matchedKeywords   String
+  jobMatchData      String?
+  createdAt         DateTime @default(now())
+
+  resume Resume @relation(fields: [resumeId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
