@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -19,6 +21,9 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { useAnalysis } from "@/hooks/use-analysis";
 import { getATSColor } from "@/utils/constants";
 import { formatDate } from "@/utils/format-date";
+import { exportPDF, exportDOCX } from "@/utils/export";
+import { ShareDialog } from "@/components/dashboard/share-dialog";
+import { EmailReportDialog } from "@/components/dashboard/email-report-dialog";
 import {
   Target,
   CheckCircle2,
@@ -30,6 +35,9 @@ import {
   Brain,
   AlertTriangle,
   Sparkles,
+  FileDown,
+  Share2,
+  Loader2,
 } from "lucide-react";
 import {
   RadarChart,
@@ -138,10 +146,32 @@ export default function AnalysisPage() {
   const { color: atsColor } = getATSColor(analysis.atsScore);
   const { color: grammarColor } = getATSColor(analysis.grammarScore);
   const { color: keywordColor } = getATSColor(analysis.keywordScore);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingDOCX, setExportingDOCX] = useState(false);
+
+  async function handleExportPDF() {
+    setExportingPDF(true);
+    try {
+      await exportPDF(analysis!.id);
+    } catch {
+      toast.error("Failed to export PDF");
+    }
+    setExportingPDF(false);
+  }
+
+  async function handleExportDOCX() {
+    setExportingDOCX(true);
+    try {
+      await exportDOCX(analysis!);
+    } catch {
+      toast.error("Failed to export DOCX");
+    }
+    setExportingDOCX(false);
+  }
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div id={`analysis-report-${analysis.id}`} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -150,16 +180,22 @@ export default function AnalysisPage() {
               {analysis.resume.originalName} &middot; {formatDate(analysis.createdAt)}
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge
               variant={analysis.atsScore >= 70 ? "success" : analysis.atsScore >= 50 ? "warning" : "destructive"}
               className="text-sm px-4 py-1"
             >
               {analysis.overallRating}
             </Badge>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Report
+            <ShareDialog analysisId={analysis.id} />
+            <EmailReportDialog analysisId={analysis.id} />
+            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exportingPDF}>
+              {exportingPDF ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+              PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportDOCX} disabled={exportingDOCX}>
+              {exportingDOCX ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+              DOCX
             </Button>
           </div>
         </div>

@@ -16,8 +16,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  resumes  Resume[]
-  analyses Analysis[]
+  resumes       Resume[]
+  analyses      Analysis[]
+  coverLetters  CoverLetter[]
+  notifications Notification[]
+  sharedAnalyses SharedAnalysis[]
 }
 
 model Resume {
@@ -29,10 +32,13 @@ model Resume {
   mimeType      String
   extractedText String?
   parsedData    String?
+  version       Int      @default(1)
+  template      String   @default("modern")
   uploadedAt    DateTime @default(now())
 
-  user     User      @relation(fields: [userId], references: [id])
-  analysis Analysis?
+  user        User           @relation(fields: [userId], references: [id])
+  analysis    Analysis?
+  coverLetters CoverLetter[]
 
   @@index([userId])
 }
@@ -56,6 +62,53 @@ model Analysis {
   jobMatchData      String?
   createdAt         DateTime @default(now())
 
-  resume Resume @relation(fields: [resumeId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  resume         Resume           @relation(fields: [resumeId], references: [id])
+  user           User             @relation(fields: [userId], references: [id])
+  sharedAnalyses SharedAnalysis[]
+}
+
+model CoverLetter {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  resumeId       String?  @db.ObjectId
+  jobDescription String?
+  companyName    String?
+  jobTitle       String?
+  content        String
+  createdAt      DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  resume Resume? @relation(fields: [resumeId], references: [id])
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model SharedAnalysis {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  analysisId String   @db.ObjectId
+  userId     String   @db.ObjectId
+  token      String   @unique
+  expiresAt  DateTime?
+  views      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  analysis Analysis @relation(fields: [analysisId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }

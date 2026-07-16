@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, X, AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
+import { Upload, FileText, X, AlertCircle, CheckCircle2, Sparkles, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { useUploadResume } from "@/hooks/use-resume";
 import { useCreateAnalysis } from "@/hooks/use-analysis";
 import { toast } from "sonner";
 import { MAX_FILE_SIZE, ACCEPTED_FILE_TYPES } from "@/utils/constants";
+import { TemplateSelector } from "@/components/dashboard/template-selector";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function UploadPage() {
   const createAnalysis = useCreateAnalysis();
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
+  const [template, setTemplate] = useState("modern");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -63,7 +65,7 @@ export default function UploadPage() {
 
     try {
       setUploadProgress(30);
-      const resume = await uploadResume.mutateAsync(file);
+      const resume = await uploadResume.mutateAsync({ file, template });
       setUploadProgress(60);
 
       const analysis = await createAnalysis.mutateAsync({
@@ -176,6 +178,22 @@ export default function UploadPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </CardContent>
+        </Card>
+
+        {/* Resume Template */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Layout className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Resume Template</CardTitle>
+            </div>
+            <CardDescription>
+              Choose a template style for your resume layout
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TemplateSelector value={template} onChange={setTemplate} />
           </CardContent>
         </Card>
 

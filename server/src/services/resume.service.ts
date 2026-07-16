@@ -36,7 +36,8 @@ function transformResume(resume: any) {
 
 export async function uploadResume(
   userId: string,
-  file: Express.Multer.File
+  file: Express.Multer.File,
+  template: string = "modern"
 ) {
   const { text, parsed } = await parseResume(file.path);
 
@@ -49,6 +50,7 @@ export async function uploadResume(
       mimeType: file.mimetype,
       extractedText: text,
       parsedData: JSON.stringify(parsed),
+      template,
     },
   });
 

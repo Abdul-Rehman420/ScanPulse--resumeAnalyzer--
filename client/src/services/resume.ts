@@ -2,9 +2,10 @@ import api from "./api";
 import { ApiResponse, Resume, DashboardStats } from "@/types";
 
 export const resumeService = {
-  async upload(file: File) {
+  async upload(file: File, template = "modern") {
     const formData = new FormData();
     formData.append("resume", file);
+    formData.append("template", template);
     const { data } = await api.post<ApiResponse<Resume>>("/resume/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });

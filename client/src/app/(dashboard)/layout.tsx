@@ -14,12 +14,16 @@ import {
   Menu,
   ChevronLeft,
   Home,
+  Wand2,
+  FileText,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AuthGuard } from "@/components/shared/auth-guard";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +31,18 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/upload", label: "Upload Resume", icon: Upload },
   { href: "/history", label: "History", icon: History },
+  { href: "/ai-rewrite", label: "AI Rewrite", icon: Wand2 },
+  { href: "/cover-letters", label: "Cover Letters", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
+
+  const items = user?.role === "ADMIN"
+    ? [...navItems, { href: "/admin", label: "Admin", icon: Shield }]
+    : navItems;
 
   return (
     <div className="flex flex-col h-full">
@@ -46,8 +56,8 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
       </div>
 
       <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
+        {items.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link key={item.href} href={item.href}>
               <div
@@ -147,9 +157,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <header className="h-16 border-b bg-card flex items-center justify-between px-4 lg:px-6">
-            <div className="lg:hidden" /> {/* spacer for mobile menu button */}
+            <div className="lg:hidden" />
             <div className="hidden lg:block" />
             <div className="flex items-center space-x-3">
+              <NotificationBell />
               <ThemeToggle />
             </div>
           </header>

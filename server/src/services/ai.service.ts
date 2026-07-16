@@ -102,3 +102,55 @@ Be precise and honest. Consider both hard skills and soft skills mentioned in th
 
   return { analysis, jobMatch };
 }
+
+export async function rewriteResumeSection(
+  resumeText: string,
+  section: string,
+  instructions: string
+): Promise<string> {
+  const systemPrompt = "You are an expert resume writer and career coach. Rewrite resume sections professionally. Return ONLY the rewritten content without explanations or markdown.";
+
+  const prompt = `I need to rewrite a section of my resume.
+
+Current resume:
+${resumeText}
+
+Section to rewrite: ${section}
+
+Additional instructions: ${instructions}
+
+Rules:
+- Rewrite ONLY the requested section
+- Use strong action verbs and quantify achievements where possible
+- Keep it concise and ATS-friendly
+- Return ONLY the rewritten section text, no explanations`;
+
+  return callLLM(systemPrompt, prompt);
+}
+
+export async function generateCoverLetter(
+  resumeText: string,
+  jobTitle: string,
+  companyName: string,
+  jobDescription?: string
+): Promise<string> {
+  const systemPrompt = "You are an expert cover letter writer. Write professional, tailored cover letters. Return ONLY the cover letter text without explanations.";
+
+  const prompt = `Write a professional cover letter based on the following information.
+
+Resume:
+${resumeText}
+
+Target Job Title: ${jobTitle}
+Target Company: ${companyName}
+${jobDescription ? `Job Description:\n${jobDescription}` : ""}
+
+Rules:
+- Professional tone, tailored to the company and role
+- Highlight relevant experience from the resume
+- Keep it to 3-4 paragraphs
+- No generic phrases, be specific
+- Return ONLY the cover letter text`;
+
+  return callLLM(systemPrompt, prompt);
+}

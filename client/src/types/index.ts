@@ -97,3 +97,58 @@ export interface ApiResponse<T> {
   data: T;
   message?: string;
 }
+
+export interface CoverLetter {
+  id: string;
+  userId: string;
+  resumeId?: string;
+  jobDescription?: string;
+  companyName?: string;
+  jobTitle?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+export interface SharedAnalysisData {
+  id: string;
+  token: string;
+  url: string;
+  expiresAt?: string;
+}
+
+export interface SharedAnalysisView {
+  id: string;
+  token: string;
+  expiresAt?: string;
+  views: number;
+  createdAt: string;
+  analysis: {
+    id: string;
+    atsScore: number;
+    overallRating: string;
+    summary: string;
+    resume: { originalName: string };
+  };
+}
+
+export interface AdminDashboardData {
+  stats: {
+    totalUsers: number;
+    totalResumes: number;
+    totalAnalyses: number;
+    totalCoverLetters: number;
+    avgAtsScore: number;
+  };
+  recentUsers: User[];
+}

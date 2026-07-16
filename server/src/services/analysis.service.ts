@@ -1,6 +1,7 @@
 import { prisma } from "../config/database";
 import { NotFoundError, AppError } from "../utils/errors";
 import { analyzeResume } from "./ai.service";
+import { createNotification } from "../utils/notifications";
 
 function serialize(obj: any): string {
   return JSON.stringify(obj);
@@ -92,6 +93,14 @@ export async function createAnalysis(
         select: { originalName: true, uploadedAt: true },
       },
     },
+  });
+
+  await createNotification({
+    userId,
+    type: "analysis_complete",
+    title: "Analysis Complete",
+    message: `Your resume "${resume.originalName}" scored ${analysis.atsScore}/100`,
+    link: `/analysis/${saved.id}`,
   });
 
   return transformAnalysis(saved);

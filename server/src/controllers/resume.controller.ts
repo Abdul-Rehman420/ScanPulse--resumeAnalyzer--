@@ -6,7 +6,8 @@ export const upload = async (req: Request, res: Response, next: NextFunction) =>
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
-    const resume = await resumeService.uploadResume(req.user!.userId, req.file);
+    const template = req.body.template || "modern";
+    const resume = await resumeService.uploadResume(req.user!.userId, req.file, template);
     res.status(201).json({ success: true, data: resume });
   } catch (error) {
     next(error);
