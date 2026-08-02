@@ -10,7 +10,8 @@ const prisma = new PrismaClient();
 
 const DEMO_EMAIL = process.env.SEED_DEMO_EMAIL || "demo@example.com";
 const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD || "demo123456";
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@example.com";
+const ADMIN_EMAIL =
+  process.env.SEED_ADMIN_EMAIL || "developer.abdulrehman007@gmail.com";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || "admin123456";
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -50,7 +51,7 @@ async function ensureAuthUser(email, password, name) {
 async function upsertProfile(authUser, name, role) {
   await prisma.profile.upsert({
     where: { id: authUser.id },
-    update: { email: authUser.email, name, role },
+    update: { email: authUser.email, role },
     create: { id: authUser.id, email: authUser.email, name, role },
   });
 }
