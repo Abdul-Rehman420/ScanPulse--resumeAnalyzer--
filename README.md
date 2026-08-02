@@ -1,6 +1,6 @@
 # AI Resume Analyzer
 
-An AI-powered resume analysis tool that provides ATS scores, keyword analysis, grammar suggestions, and job description matching. Built with Next.js 15, Express, Prisma, MongoDB, and Groq AI.
+An AI-powered resume analysis tool that provides ATS scores, keyword analysis, grammar suggestions, and job description matching. Built with Next.js 15 (App Router), Supabase (Auth + Postgres + Storage), Prisma, and Groq AI. Deploys as a single unit on Vercel.
 
 ## Features
 
@@ -9,7 +9,9 @@ An AI-powered resume analysis tool that provides ATS scores, keyword analysis, g
 - **Grammar Check** - AI-powered grammar and spelling correction
 - **Job Description Matching** - Paste a JD to get match %, missing skills, and tailored suggestions
 - **AI Recommendations** - Personalized suggestions to improve your resume
+- **AI Rewrite & Cover Letters** - Rewrite resume sections or generate tailored cover letters
 - **Dashboard** - Track your resume improvement history with charts
+- **Admin Panel** - User management (roles, deletion) for admins
 - **Dark/Light Mode** - Theme support with persistent preferences
 
 ## Tech Stack
@@ -17,10 +19,13 @@ An AI-powered resume analysis tool that provides ATS scores, keyword analysis, g
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Shadcn/UI |
-| Backend | Express.js, TypeScript, Prisma ORM |
-| Database | MongoDB Atlas |
+| Backend | Next.js Route Handlers (`/api/*`) - no separate server |
+| Auth | Supabase Auth (email/password) |
+| Database | Supabase Postgres via Prisma ORM |
+| File Storage | Supabase Storage (`resumes` bucket) |
+| PDF Parsing | pdfjs-dist (client-side, in-browser) |
 | AI | Groq AI (Llama 3.3 70B) |
-| Auth | JWT + bcrypt |
+| Email | Resend |
 | Charts | Recharts |
 | Animations | Framer Motion |
 
@@ -28,25 +33,24 @@ An AI-powered resume analysis tool that provides ATS scores, keyword analysis, g
 
 ```
 resume-analyzer/
-├── client/              # Next.js frontend
+├── client/              # The entire application (Next.js)
+│   ├── prisma/
+│   │   ├── schema.prisma  # Postgres schema (profiles, resumes, analyses...)
+│   │   └── seed.mjs       # Seeds demo + admin Supabase auth users & profiles
 │   ├── src/
-│   │   ├── app/         # Pages (landing, auth, dashboard, analysis)
-│   │   ├── components/  # UI, landing, dashboard, analysis, shared
-│   │   ├── hooks/       # Custom React hooks
-│   │   ├── services/    # API client
-│   │   ├── types/       # TypeScript interfaces
-│   │   ├── utils/       # Utilities
-│   │   └── providers/   # Context providers
-│   └── ...
-├── server/              # Express backend
-│   ├── prisma/          # Schema + migrations
-│   ├── src/
-│   │   ├── controllers/ # Route handlers
-│   │   ├── routes/      # Route definitions
-│   │   ├── services/    # Business logic (auth, resume, pdf, ai)
-│   │   ├── middleware/  # Auth, upload, validation, rate limit
-│   │   └── validators/  # Zod schemas
-│   └── uploads/         # Local file storage
+│   │   ├── app/           # Pages + API route handlers
+│   │   │   ├── api/       # /api/* route handlers (auth, resume, analyze, ai, share...)
+│   │   │   ├── (auth)/    # login, register
+│   │   │   └── (dashboard)/ # dashboard, upload, history, ai-rewrite, cover-letters, settings, admin
+│   │   ├── components/    # UI, landing, dashboard, analysis, shared
+│   │   ├── hooks/         # use-auth (Supabase session provider)
+│   │   ├── lib/server/    # env, prisma, supabase, ai, email, pdf, rate-limit, validators...
+│   │   ├── lib/           # Browser Supabase client + Storage helpers
+│   │   ├── services/      # Typed API client for route handlers
+│   │   ├── types/         # TypeScript interfaces
+│   │   ├── utils/         # Utilities (pdfjs text extraction)
+│   │   └── providers/     # Context providers
+│   └── .env               # Environment variables (gitignored)
 └── README.md
 ```
 
@@ -54,65 +58,103 @@ resume-analyzer/
 
 ### Prerequisites
 
-- Node.js 20+
-- MongoDB Atlas account (or local MongoDB)
+- Node.js 20+ (Node 22 recommended)
+- A [Supabase](https://supabase.com) project (free tier)
 - Groq API key ([get one free](https://console.groq.com/keys))
+- Resend API key ([get one free](https://resend.com))
 
 ### Installation
 
 ```bash
-# 1. Clone the repository
-git clone <your-repo-url>
-cd resume-analyzer
+# 1. Install dependencies
+cd client
+npm install
 
-# 2. Install all dependencies
-cd server && npm install && cd ../client && npm install && cd ..
-
-# 3. Set up environment variables
-cp server/.env.example server/.env
-# Edit server/.env with your:
-# - DATABASE_URL (MongoDB Atlas connection string)
-# - JWT_SECRET (generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
-# - GROQ_API_KEY
-
-# 4. Push schema to MongoDB
-cd server
-npx prisma db push
-npx prisma db seed
-cd ..
-
-# 5. Start development
-# Terminal 1 - Backend
-cd server && npm run dev
-
-# Terminal 2 - Frontend
-cd client && npm run dev
+# 2. Set up environment variables
+# Edit client/.env (see template below)
 ```
 
-### Access the App
+`client/.env`:
+```env
+NEXT_PUBLIC_API_URL=/api
+NEXT_PUBLIC_APP_NAME="AI Resume Analyzer"
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000/api
-- Prisma Studio: http://localhost:5555
+# Supabase project settings
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+
+# Supabase "Connect" > "Direct connection" string
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@aws-0-YOUR-REGION.pooler.supabase.com:5432/postgres
+
+# Groq AI
+GROQ_API_KEY=YOUR_GROQ_KEY
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# Resend Email
+RESEND_API_KEY=YOUR_RESEND_KEY
+RESEND_FROM_EMAIL=onboarding@resend.dev
+```
+
+### Supabase Project Setup
+
+1. Create a project at [dashboard.supabase.com](https://supabase.com)
+2. **Auth** → **Providers** → enable Email (password)
+3. **Auth** → **Settings** → turn **OFF** "Confirm email" (register goes straight to dashboard)
+4. **Storage** → create a **public bucket** named `resumes` (or private + service-role uploads)
+5. Copy the Project URL, anon key, and service role key into `client/.env`
+
+### Database
+
+```bash
+cd client
+npm run db:generate   # Generate Prisma client
+npm run db:push       # Push schema to Supabase Postgres
+npm run db:seed       # Create demo + admin users
+```
+
+### Run
+
+```bash
+cd client
+npm run dev           # http://localhost:3000
+```
 
 ### Demo Credentials (after seeding)
 
-- Email: `demo@example.com`
-- Password: `demo123456`
+| Role  | Email                | Password     |
+|-------|----------------------|--------------|
+| User  | `demo@example.com`   | `demo123456` |
+| Admin | `admin@example.com`  | `admin123456` |
+
+## Available Scripts (client/)
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Next.js dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm start` | Start production server |
+| `npm run lint` | Lint check |
+| `npm run db:generate` | Regenerate Prisma client |
+| `npm run db:push` | Push schema to the database |
+| `npm run db:seed` | Seed demo + admin users |
+| `npm run db:studio` | Open Prisma Studio |
 
 ## API Endpoints
 
-### Authentication
+All routes are Next.js route handlers under `client/src/app/api`. Protected routes require `Authorization: Bearer <supabase-access-token>`.
+
+### Auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login user |
-| GET | `/api/auth/profile` | Get current user |
+| GET | `/api/auth/profile` | Get current user profile (auto-creates profile) |
+| POST | `/api/auth/profile` | Update profile |
 
 ### Resume
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/resume/upload` | Upload PDF resume |
+| POST | `/api/resume` | Create resume (after client-side PDF parse + storage upload) |
 | GET | `/api/resume` | List user's resumes |
 | GET | `/api/resume/dashboard` | Dashboard stats |
 | GET | `/api/resume/:id` | Get resume by ID |
@@ -121,25 +163,46 @@ cd client && npm run dev
 ### Analysis
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/analyze` | Analyze resume (optional JD) |
+| POST | `/api/analyze` | Analyze resume (optional JD) - rate limited (5/min/user) |
 | GET | `/api/analyze` | List all analyses |
 | GET | `/api/analyze/:id` | Get analysis by ID |
 
-## Environment Variables
+### AI
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ai/rewrite` | Rewrite a resume section |
+| POST | `/api/ai/cover-letter` | Generate a cover letter |
+| GET | `/api/ai/cover-letter` | List cover letters |
+| DELETE | `/api/ai/cover-letter/:id` | Delete a cover letter |
 
-### Server (`server/.env`)
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | MongoDB Atlas connection string |
-| `JWT_SECRET` | JWT signing secret |
-| `GROQ_API_KEY` | Groq AI API key |
-| `CLIENT_URL` | Frontend URL for CORS |
-| `PORT` | Server port (default: 5000) |
+### Share
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/share` | Create a share link (returns raw JSON URL) |
+| GET | `/api/share` | List user's share links |
+| GET | `/api/share/:token` | **Public** - view shared analysis (increments views) |
+| DELETE | `/api/share/:id` | Delete a share link |
 
-### Client (`client/.env.local`)
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL |
+### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notifications` | List notifications |
+| PATCH | `/api/notifications` | Mark all as read |
+| GET | `/api/notifications/unread-count` | Unread count |
+| PATCH | `/api/notifications/:id/read` | Mark one as read |
+
+### Email
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/email/send-report` | Email an analysis report |
+
+### Admin (ADMIN role only)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/dashboard` | Aggregate stats + recent users |
+| GET | `/api/admin/users` | Paginated user list |
+| PATCH | `/api/admin/users/:id` | Change user role |
+| DELETE | `/api/admin/users/:id` | Delete user (self-deletion blocked) |
 
 ## Color Scheme
 
@@ -152,25 +215,7 @@ cd client && npm run dev
 
 ## Deployment
 
-### Frontend (Vercel)
-```bash
-cd client
-npm run build
-# Connect to Vercel, add env vars, deploy
-```
-
-### Backend (Render/Railway)
-```bash
-cd server
-# Set build command: npm install && npx prisma generate && npm run build
-# Set start command: npm start
-# Add environment variables
-```
-
-### Database (MongoDB Atlas)
-- Create free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-- Whitelist your deployment IP
-- Copy `DATABASE_URL` to server env
+Single deployable unit on Vercel. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## License
 

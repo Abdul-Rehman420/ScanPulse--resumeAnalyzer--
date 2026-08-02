@@ -6,8 +6,7 @@ export async function rewriteSection(
   section: string,
   instructions: string
 ): Promise<{ rewritten: string; section: string }> {
-  const res = await api.post("/ai/rewrite", { resumeId, section, instructions });
-  return res.data.data;
+  return api.post("/ai/rewrite", { resumeId, section, instructions });
 }
 
 export async function generateCoverLetter(data: {
@@ -16,15 +15,13 @@ export async function generateCoverLetter(data: {
   companyName: string;
   jobDescription?: string;
 }): Promise<CoverLetter> {
-  const res = await api.post("/ai/cover-letter", data);
-  return res.data.data;
+  return api.post("/ai/cover-letter", data);
 }
 
 export async function getCoverLetters(): Promise<CoverLetter[]> {
-  const res = await api.get("/ai/cover-letters");
-  return res.data.data;
+  return api.get("/ai/cover-letter");
 }
 
 export async function deleteCoverLetter(id: string): Promise<void> {
-  await api.delete(`/ai/cover-letter/${id}`);
+  await api.del(`/ai/cover-letter/${id}`);
 }

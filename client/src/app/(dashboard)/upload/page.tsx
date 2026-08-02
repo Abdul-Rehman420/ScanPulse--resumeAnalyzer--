@@ -24,6 +24,7 @@ export default function UploadPage() {
   const [jobDescription, setJobDescription] = useState("");
   const [template, setTemplate] = useState("modern");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [statusText, setStatusText] = useState("Analyzing your resume...");
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -61,12 +62,20 @@ export default function UploadPage() {
     if (!file) return;
 
     setIsProcessing(true);
-    setUploadProgress(10);
+    setUploadProgress(5);
+    setStatusText("Preparing your resume...");
 
     try {
-      setUploadProgress(30);
-      const resume = await uploadResume.mutateAsync({ file, template });
-      setUploadProgress(60);
+      const resume = await uploadResume.mutateAsync({
+        file,
+        template,
+        onProgress: (percent, stage) => {
+          setUploadProgress(percent);
+          setStatusText(stage);
+        },
+      });
+      setUploadProgress(85);
+      setStatusText("Running AI analysis...");
 
       const analysis = await createAnalysis.mutateAsync({
         resumeId: resume.id,
@@ -80,7 +89,11 @@ export default function UploadPage() {
         router.push(`/analysis/${analysis.id}`);
       }, 1500);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to process resume");
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to process resume"
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -154,7 +167,7 @@ export default function UploadPage() {
             {isProcessing && (
               <div className="mt-6 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Analyzing your resume...</span>
+                  <span>{statusText}</span>
                   <span>{uploadProgress}%</span>
                 </div>
                 <Progress value={uploadProgress} className="h-2" />

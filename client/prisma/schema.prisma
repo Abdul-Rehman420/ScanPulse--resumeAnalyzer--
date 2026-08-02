@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resumes       Resume[]
+  analyses      Analysis[]
+  coverLetters  CoverLetter[]
+  notifications Notification[]
+  sharedAnalyses SharedAnalysis[]
+
+  @@map("profiles")
+}
+
+model Resume {
+  id            String   @id @default(cuid())
+  userId        String
+  fileName      String
+  originalName  String
+  fileSize      Int
+  mimeType      String
+  extractedText String?
+  parsedData    String?
+  version       Int      @default(1)
+  template      String   @default("modern")
+  uploadedAt    DateTime @default(now())
+
+  user        Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis    Analysis?
+  coverLetters CoverLetter[]
+
+  @@index([userId])
+}
+
+model Analysis {
+  id                String   @id @default(cuid())
+  resumeId          String   @unique
+  userId            String
+  atsScore          Int
+  grammarScore      Int
+  keywordScore      Int
+  overallRating     String
+  summary           String
+  strengths         String
+  weaknesses        String
+  missingKeywords   String
+  grammarSuggestions String
+  recommendations   String
+  atsTips           String
+  matchedKeywords   String
+  jobMatchData      String?
+  createdAt         DateTime @default(now())
+
+  resume         Resume           @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  user           Profile          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sharedAnalyses SharedAnalysis[]
+
+  @@index([userId])
+}
+
+model CoverLetter {
+  id             String   @id @default(cuid())
+  userId         String
+  resumeId       String?
+  jobDescription String?
+  companyName    String?
+  jobTitle       String?
+  content        String
+  createdAt      DateTime @default(now())
+
+  user   Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SharedAnalysis {
+  id         String   @id @default(cuid())
+  analysisId String
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime?
+  views      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  user     Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AiUsage {
+  userId      String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+
+  @@map("ai_usage")
+}

@@ -1,30 +1,59 @@
-import axios from "axios";
+import { supabase } from "@/lib/supabase";
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
-  headers: { "Content-Type": "application/json" },
-});
+const BASE = "/api";
 
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  retried = false
+): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
   }
-  return config;
-});
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+  const res = await fetch(`${BASE}${path}`, { ...options, headers });
+  const json = (await res.json().catch(() => ({
+    success: false,
+    message: "Unexpected server response",
+  }))) as { success: boolean; data?: T; message?: string };
+
+  if (res.status === 401 && !retried) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session) {
+      return request<T>(path, options, true);
+    }
+    if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
-    return Promise.reject(error);
   }
-);
+
+  if (!res.ok || json.success === false) {
+    const err = new Error(json.message || "Request failed") as Error & {
+      response?: { data: unknown; status: number };
+    };
+    err.response = { data: json, status: res.status };
+    throw err;
+  }
+
+  return json.data as T;
+}
+
+const api = {
+  get: <T>(path: string, options: RequestInit = {}) => request<T>(path, options),
+  post: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "POST", body: JSON.stringify(body ?? {}) }),
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body ?? {}) }),
+  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+};
 
 export default api;

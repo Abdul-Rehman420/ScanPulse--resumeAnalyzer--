@@ -1,62 +1,58 @@
 # Deployment Guide
 
-## Frontend (Vercel)
+The application is a **single deployable unit** — the Next.js app in `client/`. Route handlers replace the old Express backend, and Supabase hosts Auth, Postgres, and Storage. Deploy everything to Vercel.
+
+## Deploy to Vercel
 
 ### Steps
 1. Push your code to GitHub
 2. Go to [vercel.com](https://vercel.com) and import the repository
 3. Set the **Root Directory** to `client`
 4. Set the **Framework Preset** to `Next.js`
-5. Add environment variables:
-   - `NEXT_PUBLIC_API_URL` = `https://your-backend.onrender.com/api`
-   - `NEXT_PUBLIC_APP_URL` = `https://your-app.vercel.app`
+5. Add environment variables (from `client/.env`):
+
+| Variable | Notes |
+|----------|-------|
+| `NEXT_PUBLIC_API_URL` | `/api` (route handlers live in the same app) |
+| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` |
+| `NEXT_PUBLIC_APP_NAME` | `AI Resume Analyzer` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (**secret** — never expose in client) |
+| `DATABASE_URL` | Supabase Postgres **direct** connection string |
+| `GROQ_API_KEY` | Groq API key |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` |
+| `RESEND_API_KEY` | Resend API key |
+| `RESEND_FROM_EMAIL` | `onboarding@resend.dev` (or your verified domain) |
+
 6. Deploy
 
-## Backend (Render)
+### Production database setup
+Run against your production Supabase project:
 
-### Steps
-1. Go to [render.com](https://render.com) and create a **New Web Service**
-2. Connect your GitHub repository
-3. Set:
-   - **Root Directory**: `server`
-   - **Build Command**: `npm install && npx prisma generate && npm run build`
-   - **Start Command**: `npm start`
-4. Add environment variables (all from `server/.env.example`)
-5. Deploy
+```bash
+cd client
+npm run db:generate
+npm run db:push
+npm run db:seed   # optional - creates demo + admin accounts
+```
 
-## Database (MongoDB Atlas)
-
-### Steps
-1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) and create a free account
-2. Create a new cluster (free M0 tier)
-3. Under **Network Access**, whitelist your deployment IP (or 0.0.0.0/0 for open access)
-4. Under **Database Access**, create a database user
-5. Click **Connect** → **Drivers** → copy the connection string
-6. Add it as `DATABASE_URL` in your Render environment variables
-7. After first deploy, push schema via Render Shell:
-   ```bash
-   npx prisma db push
-   npx prisma db seed
-   ```
+> The 7-day inactivity pause on free Supabase projects pauses your DB too. Upgrade or keep activity to avoid downtime.
 
 ## Production Checklist
 
-- [ ] Set strong `JWT_SECRET` (use `openssl rand -hex 64`)
-- [ ] Set `NODE_ENV=production`
-- [ ] Configure Cloudinary or AWS S3 for file storage
-- [ ] Set up custom domain (optional)
-- [ ] Add monitoring (optional)
+- [ ] Supabase Auth: email provider enabled, "Confirm email" **off**
+- [ ] `resumes` storage bucket created
+- [ ] Secrets only in Vercel env vars (never `NEXT_PUBLIC_` for `SUPABASE_SERVICE_ROLE_KEY`/`DATABASE_URL`)
+- [ ] Database RLS deny-by-default; all DB writes go through route handlers using the service role
+- [ ] Two Supabase projects: one for dev, one for prod (recommended)
+- [ ] Custom domain (optional)
+- [ ] Monitoring / error tracking (optional)
 
-## File Storage (Production)
+## AI Rate Limiting
 
-### Option 1: Cloudinary
-```bash
-npm install cloudinary
-```
+Global AI calls (analyze, rewrite, cover letters) are limited to **5 requests per minute per user** via the `ai_usage` table (`AiUsage` UPSERT). This is enforced in the route handlers and is serverless-safe.
 
-### Option 2: AWS S3
-```bash
-npm install @aws-sdk/client-s3 @aws-sdk/lib-storage
-```
+## Email
 
-Update `server/src/middleware/upload.middleware.ts` to use cloud storage instead of disk.
+Resend's free `onboarding@resend.dev` sender only delivers to your own account email. To send reports to any recipient, add and verify a domain in Resend and set `RESEND_FROM_EMAIL` to an address on that domain.

@@ -1,13 +1,20 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@/types";
 import { authService } from "@/services/auth";
+import { supabase } from "@/lib/supabase";
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -19,43 +26,65 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+  const loadProfile = useCallback(async () => {
+    try {
+      const profile = await authService.getProfile();
+      setUser(profile);
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      if (data.session) {
+        loadProfile();
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!mounted) return;
+        if (session) {
+          loadProfile();
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, [loadProfile]);
+
   const login = async (email: string, password: string) => {
-    const result = await authService.login(email, password);
-    setUser(result.user);
-    setToken(result.token);
-    localStorage.setItem("token", result.token);
-    localStorage.setItem("user", JSON.stringify(result.user));
+    await authService.login(email, password);
+    await loadProfile();
     router.push("/dashboard");
   };
 
   const register = async (name: string, email: string, password: string) => {
-    const result = await authService.register(name, email, password);
-    setUser(result.user);
-    setToken(result.token);
-    localStorage.setItem("token", result.token);
-    localStorage.setItem("user", JSON.stringify(result.user));
+    await authService.register(name, email, password);
+    await loadProfile();
     router.push("/dashboard");
   };
 
   const logout = () => {
+    void authService.logout();
     setUser(null);
-    setToken(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
     router.push("/");
   };
 
@@ -63,12 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
         login,
         register,
         logout,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated: !!user && !isLoading,
       }}
     >
       {children}

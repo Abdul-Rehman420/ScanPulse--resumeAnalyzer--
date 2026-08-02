@@ -5,15 +5,13 @@ export async function createShareLink(
   analysisId: string,
   expiresInDays?: number
 ): Promise<SharedAnalysisData> {
-  const res = await api.post("/share", { analysisId, expiresInDays });
-  return res.data.data;
+  return api.post("/share", { analysisId, expiresInDays });
 }
 
 export async function getSharedAnalyses(): Promise<SharedAnalysisView[]> {
-  const res = await api.get("/share");
-  return res.data.data;
+  return api.get("/share");
 }
 
 export async function deleteShareLink(id: string): Promise<void> {
-  await api.delete(`/share/${id}`);
+  await api.del(`/share/${id}`);
 }

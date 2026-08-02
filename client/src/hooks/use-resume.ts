@@ -21,7 +21,15 @@ export function useResume(id: string) {
 export function useUploadResume() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, template }: { file: File; template?: string }) => resumeService.upload(file, template),
+    mutationFn: ({
+      file,
+      template,
+      onProgress,
+    }: {
+      file: File;
+      template?: string;
+      onProgress?: (percent: number, stage: string) => void;
+    }) => resumeService.upload(file, template, onProgress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });

@@ -120,6 +120,8 @@ function RadarScoreCard({ data }: { data: { subject: string; score: number }[] }
 export default function AnalysisPage() {
   const params = useParams();
   const { data: analysis, isLoading, error, refetch } = useAnalysis(params.id as string);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingDOCX, setExportingDOCX] = useState(false);
 
   if (isLoading) {
     return (
@@ -146,8 +148,6 @@ export default function AnalysisPage() {
   const { color: atsColor } = getATSColor(analysis.atsScore);
   const { color: grammarColor } = getATSColor(analysis.grammarScore);
   const { color: keywordColor } = getATSColor(analysis.keywordScore);
-  const [exportingPDF, setExportingPDF] = useState(false);
-  const [exportingDOCX, setExportingDOCX] = useState(false);
 
   async function handleExportPDF() {
     setExportingPDF(true);

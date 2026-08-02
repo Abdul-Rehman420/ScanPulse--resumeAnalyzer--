@@ -1,90 +1,77 @@
 # Setup Guide
 
-## Quick Start
-
-### 1. Prerequisites
+## Prerequisites
 
 ```bash
-node --version  # >= 20
+node --version  # >= 20 (Node 22 recommended)
 npm --version   # >= 9
 ```
 
-### 2. Database Setup
+## 1. Supabase Project
 
-Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas), then get your connection string.
+1. Create a free project at [dashboard.supabase.com](https://supabase.com)
+2. **Auth → Providers** → enable **Email** (password sign-in)
+3. **Auth → Settings** → turn **OFF** "Confirm email" (register goes straight to the dashboard)
+4. **Storage → New bucket** → name it `resumes`
+   - For private uploads: leave it **private** and let the service role upload
+5. Project settings → **API** → copy:
+   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon` public key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+6. Connect → **Direct connection** string → `DATABASE_URL` (this is what Prisma uses)
 
-### 3. Server Setup
-
-```bash
-cd server
-npm install
-npx prisma generate
-npx prisma db push
-npx prisma db seed
-```
-
-### 4. Client Setup
+## 2. Install
 
 ```bash
 cd client
 npm install
 ```
 
-### 5. Environment Files
+## 3. Environment File
 
-**server/.env:**
-```env
-NODE_ENV=development
-PORT=5000
-DATABASE_URL="mongodb+srv://user:password@cluster.mongodb.net/resume_analyzer?retryWrites=true&w=majority"
-JWT_SECRET="your-secret-key-change-this"
-JWT_EXPIRES_IN="7d"
-GROQ_API_KEY="your-groq-api-key"
-GROQ_MODEL="llama-3.3-70b-versatile"
-CLIENT_URL="http://localhost:3000"
-UPLOAD_DIR="./uploads"
-MAX_FILE_SIZE=5242880
-```
+Create `client/.env` (gitignored). All secrets stay server-side (never `NEXT_PUBLIC_`):
 
-**client/.env.local:**
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=/api
 NEXT_PUBLIC_APP_NAME="AI Resume Analyzer"
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@aws-0-YOUR-REGION.pooler.supabase.com:5432/postgres
+
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=llama-3.3-70b-versatile
+
+RESEND_API_KEY=your-resend-api-key
+RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
-### 6. Groq API Key
-
-1. Go to https://console.groq.com/keys
-2. Sign in with Google/GitHub
-3. Click "Create API Key"
-4. Copy the key to `server/.env` as `GROQ_API_KEY`
-
-### 7. Run
+## 4. Database + Seed
 
 ```bash
-# Terminal 1
-cd server && npm run dev
-
-# Terminal 2
-cd client && npm run dev
+npm run db:generate   # Generate Prisma client
+npm run db:push       # Push schema to Supabase Postgres
+npm run db:seed       # Create demo + admin users (creates them in Supabase Auth too)
 ```
 
-## Available Scripts
+Seeded accounts:
 
-### Server
+| Role  | Email                | Password     |
+|-------|----------------------|--------------|
+| User  | `demo@example.com`   | `demo123456` |
+| Admin | `admin@example.com`  | `admin123456` |
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start dev server with hot reload |
-| `npm run build` | TypeScript compilation |
-| `npm start` | Start production server |
-| `npm run db:push` | Push schema to MongoDB |
-| `npm run db:seed` | Seed database |
-| `npm run db:studio` | Open Prisma Studio |
-| `npm run db:generate` | Regenerate Prisma client |
+> The seed uses the service role key to create the auth users, then upserts matching `profiles` rows. Re-run any time to repair missing profiles.
 
-### Client
+## 5. Run
+
+```bash
+npm run dev   # http://localhost:3000
+```
+
+## Available Scripts (client/)
 
 | Script | Description |
 |--------|-------------|
@@ -92,26 +79,30 @@ cd client && npm run dev
 | `npm run build` | Production build |
 | `npm start` | Start production server |
 | `npm run lint` | Lint check |
+| `npm run db:generate` | Regenerate Prisma client |
+| `npm run db:push` | Push schema to the database |
+| `npm run db:seed` | Seed demo + admin users |
+| `npm run db:studio` | Open Prisma Studio |
 
 ## Troubleshooting
 
 ### Prisma Client not generated
 ```bash
-cd server
-npx prisma generate
+npm run db:generate
 ```
 
-### MongoDB connection issues
-Ensure your IP is whitelisted in MongoDB Atlas Network Access.
+### Database connection issues
+- Use the Supabase **Direct connection** string (not the pooled one) for `DATABASE_URL`
+- Your IP may need to be allowed if IPv6/DB-level restrictions are enabled (temporarily disable for dev)
 
-### CORS errors
-Ensure `CLIENT_URL` in `server/.env` matches your frontend URL exactly.
+### `NEXT_PUBLIC_SUPABASE_URL must be set`
+The env getters throw lazily on first use. Fill in all values in `client/.env` — placeholders starting with `YOUR_` are rejected.
 
-### File upload fails
-Check `uploads/` directory exists and is writable:
-```bash
-mkdir -p server/uploads
-```
+### PDF won't upload / "Invalid PDF file"
+The app checks for the `%PDF-` magic bytes, then extracts text in the browser with pdfjs-dist. Scanned/image-only PDFs may yield no text.
 
 ### AI API errors
-Verify your Groq API key is valid at https://console.groq.com/keys
+Verify your Groq API key at https://console.groq.com/keys. Rate limit is 5 AI requests per minute per user.
+
+### Email not sending
+Use a verified sender in Resend. The free `onboarding@resend.dev` only sends to your account email; verify a domain to send to anyone.

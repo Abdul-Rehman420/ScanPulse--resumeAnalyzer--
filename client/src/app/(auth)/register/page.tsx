@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { registerSchema, RegisterFormData } from "@/utils/validation";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { AxiosError } from "axios";
 
 export default function RegisterPage() {
   const { register: registerUser } = useAuth();
@@ -34,8 +33,9 @@ export default function RegisterPage() {
       await registerUser(data.name, data.email, data.password);
       toast.success("Account created successfully!");
     } catch (error) {
-      const err = error as AxiosError<{ message: string }>;
-      toast.error(err.response?.data?.message || "Registration failed");
+      const message = (error as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
+      toast.error(message || "Registration failed");
     } finally {
       setIsSubmitting(false);
     }

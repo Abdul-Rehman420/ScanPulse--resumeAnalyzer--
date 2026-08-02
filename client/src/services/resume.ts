@@ -1,34 +1,70 @@
 import api from "./api";
-import { ApiResponse, Resume, DashboardStats } from "@/types";
+import { Resume, DashboardStats } from "@/types";
+import { extractTextFromPdf, isPdfFile } from "@/utils/pdf";
+import { uploadResumeFile, deleteResumeFile } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const resumeService = {
-  async upload(file: File, template = "modern") {
-    const formData = new FormData();
-    formData.append("resume", file);
-    formData.append("template", template);
-    const { data } = await api.post<ApiResponse<Resume>>("/resume/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+  async upload(
+    file: File,
+    template = "modern",
+    onProgress?: (percent: number, stage: string) => void
+  ): Promise<Resume> {
+    onProgress?.(10, "Validating file...");
+
+    if (!(await isPdfFile(file))) {
+      throw new Error("Invalid PDF file");
+    }
+
+    onProgress?.(30, "Extracting text...");
+    const extractedText = await extractTextFromPdf(file);
+    if (!extractedText.trim()) {
+      throw new Error("Could not extract any text from this PDF");
+    }
+
+    onProgress?.(55, "Uploading file...");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("No active session");
+    const storagePath = await uploadResumeFile(session.user.id, file);
+
+    onProgress?.(75, "Saving resume...");
+    const resume = await api.post<Resume>("/resume", {
+      originalName: file.name,
+      fileName: storagePath,
+      fileSize: file.size,
+      mimeType: "application/pdf",
+      template,
+      extractedText,
     });
-    return data.data;
+
+    onProgress?.(90, "Saved");
+    return resume;
   },
 
   async getAll() {
-    const { data } = await api.get<ApiResponse<Resume[]>>("/resume");
-    return data.data;
+    return api.get<Resume[]>("/resume");
   },
 
   async getById(id: string) {
-    const { data } = await api.get<ApiResponse<Resume>>(`/resume/${id}`);
-    return data.data;
+    return api.get<Resume>(`/resume/${id}`);
   },
 
   async delete(id: string) {
-    const { data } = await api.delete<ApiResponse<{ message: string }>>(`/resume/${id}`);
-    return data.data;
+    const resume = await this.getById(id).catch(() => null);
+    const result = await api.del<{ message: string }>(`/resume/${id}`);
+    if (resume?.fileName) {
+      try {
+        await deleteResumeFile(resume.fileName);
+      } catch {
+        // storage cleanup failure is non-fatal
+      }
+    }
+    return result;
   },
 
   async getDashboardStats() {
-    const { data } = await api.get<ApiResponse<DashboardStats>>("/resume/dashboard");
-    return data.data;
+    return api.get<DashboardStats>("/resume/dashboard");
   },
 };

@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { loginSchema, LoginFormData } from "@/utils/validation";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { AxiosError } from "axios";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -34,8 +33,9 @@ export default function LoginPage() {
       await login(data.email, data.password);
       toast.success("Welcome back!");
     } catch (error) {
-      const err = error as AxiosError<{ message: string }>;
-      toast.error(err.response?.data?.message || "Invalid email or password");
+      const message = (error as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
+      toast.error(message || "Invalid email or password");
     } finally {
       setIsSubmitting(false);
     }

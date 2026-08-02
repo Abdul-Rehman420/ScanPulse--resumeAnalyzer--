@@ -2,13 +2,12 @@ import api from "./api";
 import { Notification } from "@/types";
 
 export async function getNotifications(): Promise<Notification[]> {
-  const res = await api.get("/notifications");
-  return res.data.data;
+  return api.get("/notifications");
 }
 
 export async function getUnreadCount(): Promise<number> {
-  const res = await api.get("/notifications/unread-count");
-  return res.data.data.count;
+  const data = await api.get<{ count: number }>("/notifications/unread-count");
+  return data.count;
 }
 
 export async function markAsRead(id: string): Promise<void> {
@@ -16,5 +15,5 @@ export async function markAsRead(id: string): Promise<void> {
 }
 
 export async function markAllAsRead(): Promise<void> {
-  await api.patch("/notifications/read-all");
+  await api.patch("/notifications");
 }
